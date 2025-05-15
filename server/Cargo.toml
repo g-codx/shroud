@@ -1,0 +1,21 @@
+[package]
+name = "server"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+log = { workspace = true }
+pretty_env_logger = { workspace = true }
+tun = { workspace = true }
+tokio = { workspace = true }
+thiserror = { workspace = true }
+
+
+futures = { workspace = true }
+dashmap = { workspace = true }
+arc-swap = { workspace = true }
+tokio-tun = { workspace = true }
+
+
+protocol = { path = "../protocol" }
+
