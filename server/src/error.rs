@@ -8,12 +8,6 @@ pub enum Error {
     Io(#[from] std::io::Error),
     #[error("{0}")]
     Protocol(#[from] protocol::error::Error),
-
-
-
-
-
-
     #[error("{0}")]
     TokioJoin(#[from] tokio::task::JoinError),
     #[error("{0}")]

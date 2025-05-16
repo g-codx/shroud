@@ -6,10 +6,10 @@ use aes_gcm::{
 
 pub const TEST_KEY: &[u8] = b"32_byte_secret_key_for_aes256gcm";
 
-// Шифрование данных с AES-256-GCM
+/// Data encryption with AES-256-GCM
 pub fn encrypt_aes256gcm(
-    key: &[u8],       // 32 байта (256 бит)
-    plaintext: &[u8], // данные для шифрования
+    key: &[u8],       // 32 bytes (256 bits)
+    plaintext: &[u8], // encryption data
 ) -> error::Result<(Vec<u8>, Vec<u8>)> {
     // Создаем шифр с заданным ключом
     let cipher = Aes256Gcm::new_from_slice(key)?;
@@ -23,11 +23,11 @@ pub fn encrypt_aes256gcm(
     Ok((ciphertext, nonce.to_vec()))
 }
 
-// Дешифрование данных с AES-256-GCM
+/// Data decryption with AES-256-GCM
 pub fn decrypt_aes256gcm(
-    key: &[u8],        // 32 байта (256 бит)
-    ciphertext: &[u8], // зашифрованные данные
-    nonce: &[u8],      // 12 байт
+    key: &[u8],        // 32 bytes (256 bits)
+    ciphertext: &[u8], // encrypted data
+    nonce: &[u8],      // 12 bytes
 ) -> error::Result<Vec<u8>> {
     // расшифрованные данные
     // Создаем шифр с заданным ключом

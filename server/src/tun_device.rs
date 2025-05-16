@@ -1,6 +1,5 @@
 use crate::error;
 use log::info;
-use std::net::Ipv4Addr;
 use std::ops::{Deref, DerefMut};
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::process::Command;
@@ -26,7 +25,7 @@ impl TunDevice {
             .next()
             .ok_or(error::Error::TunConfig(String::from("No TUN device")))?;
 
-        info!("TUN интерфейс создан: {}", tun.name());
+        info!("TUN {} interface created and configured", tun.name());
 
         Ok(Self(tun))
     }
@@ -116,7 +115,6 @@ async fn setup_tun_interface() -> error::Result<()> {
             output
         )));
     }
-
-    info!("TUN интерфейс настроен");
+    
     Ok(())
 }
