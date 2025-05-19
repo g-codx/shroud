@@ -14,9 +14,9 @@ impl TunDevice {
         // Получаем вектор TUN устройств
         let tun_devices = TunBuilder::new()
             .name(tun_name)
-            // .address("10.0.0.1".parse().unwrap())
-            // .netmask("255.255.255.0".parse().unwrap())
-            // .destination("10.0.0.2".parse().unwrap())
+            .address("10.0.0.1".parse().unwrap())
+            .netmask("255.255.255.0".parse().unwrap())
+            .destination("10.0.0.2".parse().unwrap())
             .up()
             .build()?;
 
@@ -63,7 +63,7 @@ async fn setup_tun_interface() -> error::Result<()> {
         .args(["link", "set", "dev", "tun0", "up"])
         .output()
         .await?;
-    
+
     if !output.status.success() {
         return Err(error::Error::TunConfig(format!(
             "Не удалось поднять tun0: {:?}",
@@ -76,7 +76,7 @@ async fn setup_tun_interface() -> error::Result<()> {
         .args(["addr", "add", "10.8.0.1/24", "dev", "tun0"])
         .output()
         .await?;
-    
+
     if !output.status.success() {
         return Err(error::Error::TunConfig(format!(
             "Не удалось назначить IP tun0: {:?}",
@@ -111,7 +111,7 @@ async fn setup_tun_interface() -> error::Result<()> {
         ])
         .output()
         .await?;
-    
+
     if !output.status.success() {
         return Err(error::Error::TunConfig(format!(
             "Не удалось настроить NAT: {:?}",
