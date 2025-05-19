@@ -18,7 +18,7 @@ async fn main() -> error::Result<()> {
         .tun_name("tun0") // имя интерфейса (можно пустое для автогенерации)
         .address((10, 8, 0, 2)) // IP клиента
         .netmask((255, 255, 255, 0))
-        .destination((10, 0, 0, 1)) // маска подсети
+        .destination((10, 8, 0, 1))
         .mtu(1500)
         .up(); // поднять интерфейс
 
@@ -26,21 +26,14 @@ async fn main() -> error::Result<()> {
     let mut tun: AsyncDevice = tun::create_as_async(&config)?;
     println!("TUN интерфейс создан: {}", tun.tun_name()?);
 
-    // let route_output = Command::new("ip")
-    //     .arg("route")
-    //     .arg("add")
-    //     .arg("0.0.0.0/0")
-    //     .arg("via")
-    //     .arg("10.8.0.1")
-    //     .arg("dev")
-    //     .arg("tun0")
-    //     .output()
-    //     .await
-    //     .expect("Failed to execute IP ROUTE command");
-
-    // Или маршрутизация всего трафика через VPN (full-tunnel)
     let route_output = Command::new("ip")
-        .args(["route", "add", "0.0.0.0/0", "dev", "tun0"])
+        .arg("route")
+        .arg("add")
+        .arg("0.0.0.0/0")
+        .arg("via")
+        .arg("10.8.0.1")
+        .arg("dev")
+        .arg("tun0")
         .output()
         .await
         .expect("Failed to execute IP ROUTE command");
@@ -53,7 +46,7 @@ async fn main() -> error::Result<()> {
     }
 
     let socket = UdpSocket::bind("0.0.0.0:0").await?;
-    let server_addr = "79.133.182.111:44444";
+    let server_addr = "192.168.0.103:44444"; //79.133.182.111:44444
 
     // Буферы для передачи
     let mut tun_buf = [0u8; 3000];

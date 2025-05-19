@@ -1,6 +1,5 @@
-use tokio::net::UdpSocket;
-use std::error::Error;
 use std::time::Duration;
+use tokio::net::UdpSocket;
 
 #[tokio::test]
 async fn main_test() {
@@ -15,10 +14,10 @@ async fn main_test() {
 
     loop {
         // Отправляем сообщение на сервер
-        socket.send_to(message.as_bytes(), server_addr).await.unwrap();
+        socket
+            .send_to(message.as_bytes(), server_addr)
+            .await
+            .unwrap();
         tokio::time::sleep(Duration::from_secs(2)).await;
     }
-
-    println!("Sent message to {}: {}", server_addr, message);
-    
 }

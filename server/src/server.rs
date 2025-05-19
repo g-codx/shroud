@@ -30,7 +30,7 @@ impl Server {
     }
 
     pub async fn run(self) -> error::Result<()> {
-        info!("VPN server (build 0.0.2) is running... ");
+        info!("VPN server (build 0.0.3) is running... ");
         
         let socket = self.socket.clone();
         let client_manager = self.client_manager.clone();

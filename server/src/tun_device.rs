@@ -14,9 +14,9 @@ impl TunDevice {
         // Получаем вектор TUN устройств
         let tun_devices = TunBuilder::new()
             .name(tun_name)
-            .address("10.0.0.1".parse().unwrap())
-            .netmask("255.255.255.0".parse().unwrap())
-            .destination("10.0.0.2".parse().unwrap())
+            // .address("10.0.0.1".parse().unwrap())
+            // .netmask("255.255.255.0".parse().unwrap())
+            // .destination("10.0.0.2".parse().unwrap())
             .up()
             .build()?;
 
@@ -58,31 +58,31 @@ impl DerefMut for TunDevice {
 
 // Настройка TUN интерфейса в системе
 async fn setup_tun_interface() -> error::Result<()> {
-    // // Включаем интерфейс
-    // let output = Command::new("ip")
-    //     .args(["link", "set", "dev", "tun0", "up"])
-    //     .output()
-    //     .await?;
-    //
-    // if !output.status.success() {
-    //     return Err(error::Error::TunConfig(format!(
-    //         "Не удалось поднять tun0: {:?}",
-    //         output
-    //     )));
-    // }
+    // Включаем интерфейс
+    let output = Command::new("ip")
+        .args(["link", "set", "dev", "tun0", "up"])
+        .output()
+        .await?;
+    
+    if !output.status.success() {
+        return Err(error::Error::TunConfig(format!(
+            "Не удалось поднять tun0: {:?}",
+            output
+        )));
+    }
 
-    // Назначаем IP адресу
-    // let output = Command::new("ip")
-    //     .args(["addr", "add", "10.8.0.1/24", "dev", "tun0"])
-    //     .output()
-    //     .await?;
-    //
-    // if !output.status.success() {
-    //     return Err(error::Error::TunConfig(format!(
-    //         "Не удалось назначить IP tun0: {:?}",
-    //         output
-    //     )));
-    // }
+    //Назначаем IP адресу
+    let output = Command::new("ip")
+        .args(["addr", "add", "10.8.0.1/24", "dev", "tun0"])
+        .output()
+        .await?;
+    
+    if !output.status.success() {
+        return Err(error::Error::TunConfig(format!(
+            "Не удалось назначить IP tun0: {:?}",
+            output
+        )));
+    }
 
     // Включаем форвардинг пакетов (IPv4)
     let output = Command::new("sysctl")
@@ -97,27 +97,27 @@ async fn setup_tun_interface() -> error::Result<()> {
         )));
     }
 
-    // // Настройка NAT для выхода в интернет (если нужно)
-    // let output = Command::new("iptables")
-    //     .args([
-    //         "-t",
-    //         "nat",
-    //         "-A",
-    //         "POSTROUTING",
-    //         "-s",
-    //         "10.8.0.0/24",
-    //         "-j",
-    //         "MASQUERADE",
-    //     ])
-    //     .output()
-    //     .await?;
-    //
-    // if !output.status.success() {
-    //     return Err(error::Error::TunConfig(format!(
-    //         "Не удалось настроить NAT: {:?}",
-    //         output
-    //     )));
-    // }
+    // Настройка NAT для выхода в интернет (если нужно)
+    let output = Command::new("iptables")
+        .args([
+            "-t",
+            "nat",
+            "-A",
+            "POSTROUTING",
+            "-s",
+            "10.8.0.0/24",
+            "-j",
+            "MASQUERADE",
+        ])
+        .output()
+        .await?;
+    
+    if !output.status.success() {
+        return Err(error::Error::TunConfig(format!(
+            "Не удалось настроить NAT: {:?}",
+            output
+        )));
+    }
 
     Ok(())
 }
