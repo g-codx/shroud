@@ -16,7 +16,7 @@ impl TunDevice {
             .name(tun_name)
             .address("10.0.0.1".parse().unwrap())
             .netmask("255.255.255.0".parse().unwrap())
-            .netmask("10.0.0.2".parse().unwrap())
+            .destination("10.0.0.2".parse().unwrap())
             .up()
             .build()?;
 
