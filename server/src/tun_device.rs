@@ -1,5 +1,5 @@
 use crate::error;
-use log::info;
+use log::{error, info};
 use std::ops::{Deref, DerefMut};
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::process::Command;
@@ -20,7 +20,25 @@ impl TunDevice {
             .up()
             .build()?;
 
-        setup_tun_interface().await?;
+        // setup_tun_interface().await?;
+
+        //sudo ip route add 10.0.0.0/24 dev tun0
+        let route_output = Command::new("ip")
+            .arg("route")
+            .arg("add")
+            .arg("10.0.0.0/24")
+            .arg("dev")
+            .arg("tun0")
+            .output()
+            .await
+            .expect("Failed to execute IP ROUTE command");
+        
+        if !route_output.status.success() {
+            error!(
+                "Failed to set route: {}",
+                String::from_utf8_lossy(&route_output.stderr)
+            );
+        }
 
         // Берем первое устройство из вектора
         let tun = tun_devices

@@ -8,7 +8,7 @@ mod tun_device;
 use crate::server::Server;
 use clap::Parser;
 use std::net::SocketAddr;
-
+use log::info;
 //cargo build --release && sudo ./target/release/server
 
 #[tokio::main]
@@ -18,6 +18,7 @@ async fn main() {
     }
     pretty_env_logger::init();
 
+    info!("(build 0.0.7)");
     let args = Args::parse();
 
     let server_addr: SocketAddr = format!("0.0.0.0:{}", args.port)
