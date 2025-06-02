@@ -67,8 +67,8 @@ async fn setup_server_network() -> Result<(), String> {
     println!("[SERVER] Using default interface: {}", interface);
 
     run_cmd("sysctl -w net.ipv4.ip_forward=1").await?;
-    run_cmd(&format!("iptables -t nat -A POSTROUTING -o {} -j MASQUERADE", interface)).await?;
-    run_cmd(&format!("iptables -A FORWARD -i tun0 -o {} -j ACCEPT", interface)).await?;
+    run_cmd("iptables -t nat -A POSTROUTING -s 10.0.0.0/24 -o eth0 -j MASQUERADE").await?;
+    run_cmd("iptables -A FORWARD -i tun0 -o eth0 -j ACCEPT").await?;
     Ok(())
 }
 
