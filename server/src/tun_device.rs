@@ -60,20 +60,34 @@ impl DerefMut for TunDevice {
     }
 }
 
+
+
 async fn setup_server_network() -> Result<(), String> {
-    // run_cmd("ip route del default").await?;
-    // match run_cmd("ip route add default dev tun0").await {
-    //     Ok(_) => {}
-    //     Err(err) => {
-    //         error!("{}", err);
-    //     }
-    // }
-    //ip route add default via 10.8.0.1 dev tun0
-    run_cmd("ip route add 0.0.0.0/0 via 10.8.0.1 dev tun0").await?;
+    let interface = get_default_interface().await?;
+    println!("[SERVER] Using default interface: {}", interface);
+
     run_cmd("sysctl -w net.ipv4.ip_forward=1").await?;
-    run_cmd("iptables -t nat -A POSTROUTING -o eth0 -j MASQUERADE").await?;
-    run_cmd("iptables -A FORWARD -i tun0 -o eth0 -j ACCEPT").await?;
+    run_cmd(&format!("iptables -t nat -A POSTROUTING -o {} -j MASQUERADE", interface)).await?;
+    run_cmd(&format!("iptables -A FORWARD -i tun0 -o {} -j ACCEPT", interface)).await?;
     Ok(())
+}
+
+async fn get_default_interface() -> Result<String, String> {
+    let output = Command::new("ip")
+        .arg("route")
+        .arg("list")
+        .output()
+        .await
+        .map_err(|e| format!("Failed to run command: {}", e))?;
+
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    for line in stdout.lines() {
+        if line.starts_with("default via") {
+            return Ok(line.split_whitespace().nth(5).unwrap_or("eth0").to_string());
+        }
+    }
+
+    Err("No default route found".into())
 }
 
 async fn run_cmd(cmd: &str) -> Result<(), String> {
