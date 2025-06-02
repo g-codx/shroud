@@ -60,19 +60,20 @@ impl DerefMut for TunDevice {
     }
 }
 
-// async fn setup_server_network() -> Result<(), String> {
-//     // run_cmd("ip route del default").await?;
-//     match run_cmd("ip route add default dev tun0").await {
-//         Ok(_) => {}
-//         Err(err) => {
-//             error!("{}", err);
-//         }
-//     }
-//     run_cmd("sysctl -w net.ipv4.ip_forward=1").await?;
-//     run_cmd("iptables -t nat -A POSTROUTING -o eth0 -j MASQUERADE").await?;
-//     run_cmd("iptables -A FORWARD -i tun0 -o eth0 -j ACCEPT").await?;
-//     Ok(())
-// }
+async fn setup_server_network() -> Result<(), String> {
+    // run_cmd("ip route del default").await?;
+    // match run_cmd("ip route add default dev tun0").await {
+    //     Ok(_) => {}
+    //     Err(err) => {
+    //         error!("{}", err);
+    //     }
+    // }
+    //ip route add default via 10.8.0.1 dev tun0
+    run_cmd("sysctl -w net.ipv4.ip_forward=1").await?;
+    run_cmd("iptables -t nat -A POSTROUTING -o eth0 -j MASQUERADE").await?;
+    run_cmd("iptables -A FORWARD -i tun0 -o eth0 -j ACCEPT").await?;
+    Ok(())
+}
 
 async fn run_cmd(cmd: &str) -> Result<(), String> {
     let parts: Vec<&str> = cmd.split_whitespace().collect();
