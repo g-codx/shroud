@@ -13,7 +13,7 @@ use tun::{AbstractDevice, AsyncDevice, Configuration};
 #[tokio::main]
 async fn main() -> error::Result<()> {
     let socket = UdpSocket::bind("0.0.0.0:0").await?;
-    let server_addr = "192.168.0.103:44444";
+    let server_addr = "79.133.182.111:44444";
     //192.168.0.103:44444
     //79.133.182.111:44444
 
@@ -54,12 +54,12 @@ async fn main() -> error::Result<()> {
     // }
 
     // Обеспечиваем очистку маршрутов при завершении
-    let cleanup = cleanup_routing("tun0", server_addr);
-    tokio::spawn(async move {
-        tokio::signal::ctrl_c().await.ok();
-        cleanup.await.ok();
-        std::process::exit(0);
-    });
+    // let cleanup = cleanup_routing("tun0", server_addr);
+    // tokio::spawn(async move {
+    //     tokio::signal::ctrl_c().await.ok();
+    //     cleanup.await.ok();
+    //     std::process::exit(0);
+    // });
 
     // Буферы для передачи
     let mut tun_buf = [0u8; 3000];

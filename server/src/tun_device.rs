@@ -22,23 +22,9 @@ impl TunDevice {
 
         // setup_tun_interface().await?;
 
-        //sudo ip route add 10.0.0.0/24 dev tun0
-        let route_output = Command::new("ip")
-            .arg("route")
-            .arg("add")
-            .arg("10.0.0.0/24")
-            .arg("dev")
-            .arg("tun0")
-            .output()
+        setup_server_network()
             .await
-            .expect("Failed to execute IP ROUTE command");
-        
-        if !route_output.status.success() {
-            error!(
-                "Failed to set route: {}",
-                String::from_utf8_lossy(&route_output.stderr)
-            );
-        }
+            .expect("Error setting up server network");
 
         // Берем первое устройство из вектора
         let tun = tun_devices
@@ -72,6 +58,36 @@ impl DerefMut for TunDevice {
     fn deref_mut(&mut self) -> &mut Self::Target {
         &mut self.0
     }
+}
+
+async fn setup_server_network() -> Result<(), String> {
+    if let Some(err) = run_cmd("ip route add 10.0.0.0/24 dev tun0").await.err() {
+        error!("{}", err);
+    }
+
+    run_cmd("sysctl -w net.ipv4.ip_forward=1").await?;
+    run_cmd("iptables -t nat -A POSTROUTING -o eth0 -j MASQUERADE").await?;
+    run_cmd("iptables -A FORWARD -i tun0 -o eth0 -j ACCEPT").await?;
+    Ok(())
+}
+
+async fn run_cmd(cmd: &str) -> Result<(), String> {
+    let parts: Vec<&str> = cmd.split_whitespace().collect();
+    let status = Command::new(parts[0])
+        .args(&parts[1..])
+        .status()
+        .await
+        .map_err(|e| format!("Failed to execute {}: {}", cmd, e))?;
+
+    if !status.success() {
+        return Err(format!(
+            "Command `{}` failed with exit code {:?}",
+            cmd,
+            status.code()
+        ));
+    }
+
+    Ok(())
 }
 
 // Настройка TUN интерфейса в системе

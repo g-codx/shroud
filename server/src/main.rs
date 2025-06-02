@@ -17,8 +17,7 @@ async fn main() {
         std::env::set_var("RUST_LOG", "info");
     }
     pretty_env_logger::init();
-
-    info!("(build 0.0.7)");
+    
     let args = Args::parse();
 
     let server_addr: SocketAddr = format!("0.0.0.0:{}", args.port)
