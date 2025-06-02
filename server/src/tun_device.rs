@@ -22,9 +22,9 @@ impl TunDevice {
 
         // setup_tun_interface().await?;
 
-        // setup_server_network()
-        //     .await
-        //     .expect("Error setting up server network");
+        setup_server_network()
+            .await
+            .expect("Error setting up server network");
 
         // Берем первое устройство из вектора
         let tun = tun_devices
