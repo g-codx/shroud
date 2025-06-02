@@ -69,6 +69,7 @@ async fn setup_server_network() -> Result<(), String> {
     //     }
     // }
     //ip route add default via 10.8.0.1 dev tun0
+    run_cmd("route add 0.0.0.0/0 via 10.8.0.1 dev tun0").await?;
     run_cmd("sysctl -w net.ipv4.ip_forward=1").await?;
     run_cmd("iptables -t nat -A POSTROUTING -o eth0 -j MASQUERADE").await?;
     run_cmd("iptables -A FORWARD -i tun0 -o eth0 -j ACCEPT").await?;
