@@ -22,9 +22,9 @@ impl TunDevice {
 
         // setup_tun_interface().await?;
 
-        setup_server_network()
-            .await
-            .expect("Error setting up server network");
+        // setup_server_network()
+        //     .await
+        //     .expect("Error setting up server network");
 
         // Берем первое устройство из вектора
         let tun = tun_devices
@@ -64,7 +64,7 @@ impl DerefMut for TunDevice {
 
 async fn setup_server_network() -> Result<(), String> {
     let interface = get_default_interface().await?;
-    println!("[SERVER] Using default interface: {}", interface);
+    info!("[SERVER] Using default interface: {}", interface);
 
     run_cmd("sysctl -w net.ipv4.ip_forward=1").await?;
     run_cmd("iptables -t nat -A POSTROUTING -s 10.0.0.0/24 -o eth0 -j MASQUERADE").await?;
