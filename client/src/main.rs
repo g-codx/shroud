@@ -9,7 +9,7 @@ use tun::{AbstractDevice, AsyncDevice, Configuration};
 //cargo build --bin client --release && sudo ./target/release/client
 
 //cargo build --release && sudo ./target/release/client
-
+pub const TEST_KEY: &[u8] = b"32_byte_secret_key_for_aes256gcm";
 #[tokio::main]
 async fn main() -> error::Result<()> {
     let socket = UdpSocket::bind("0.0.0.0:0").await?;
@@ -76,7 +76,7 @@ async fn main() -> error::Result<()> {
                 }
 
                 let packet = &tun_buf[..n];
-                let packet = protocol::encrypt(packet)?;
+                let packet = protocol::encrypt(packet, TEST_KEY)?;
                 // println!("Принят и зашифрован пакет из TUN");
                 socket.send_to(&packet, server_addr).await?;
                 // println!("Зашифрованный пакет отправлен на сервер");
@@ -89,7 +89,7 @@ async fn main() -> error::Result<()> {
                     println!("Сервер закрыл соединение");
                     break;
                 }
-                let packet = protocol::decrypt(&sock_buf[..n])?;
+                let packet = protocol::decrypt(&sock_buf[..n], TEST_KEY)?;
                 tun.write_all(&packet).await?;
             }
         }

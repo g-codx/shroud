@@ -11,10 +11,11 @@ pub struct Server {
     socket: Arc<UdpSocket>,
     tun_device: TunDevice,
     client_manager: ClientManager,
+    key: String,
 }
 
 impl Server {
-    pub async fn new(server_addr: SocketAddr) -> error::Result<Self> {
+    pub async fn new(server_addr: SocketAddr, key: String) -> error::Result<Self> {
         let socket = UdpSocket::bind(server_addr).await?;
         let socket = Arc::new(socket);
 
@@ -26,20 +27,23 @@ impl Server {
             socket,
             tun_device,
             client_manager: ClientManager::new(),
+            key,
         })
     }
 
     pub async fn run(self) -> error::Result<()> {
         info!("VPN server is running... ");
-        
+
         let socket = self.socket.clone();
         let client_manager = self.client_manager.clone();
 
         let (tun_tx, tun_rx) = mpsc::channel(3072);
         let tun_device = self.tun_device;
 
-        let udp_handler = handler::udp::handle(socket, client_manager.clone(), tun_tx);
-        let tun_handler = handler::tun::handle(tun_device, client_manager, tun_rx);
+        let udp_handler =
+            handler::udp::handle(socket, client_manager.clone(), tun_tx, self.key.clone());
+        let tun_handler =
+            handler::tun::handle(tun_device, client_manager, tun_rx, self.key.clone());
 
         tokio::try_join!(udp_handler, tun_handler)?;
 

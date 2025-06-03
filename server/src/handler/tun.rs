@@ -7,6 +7,7 @@ pub(crate) fn handle(
     mut tun_device: TunDevice,
     client_manager: ClientManager,
     mut rx: tokio::sync::mpsc::Receiver<Vec<u8>>,
+    key: String,
 ) -> tokio::task::JoinHandle<()> {
     tokio::spawn(async move {
         let mut buf = vec![0u8; 3072];
@@ -30,7 +31,7 @@ pub(crate) fn handle(
                         }
                         Ok(n) => {
                             let packet = &buf[..n];
-                            let packet = match protocol::encrypt(packet) {
+                            let packet = match protocol::encrypt(packet, key.as_bytes()) {
                                 Ok(packet) => packet,
                                 Err(err) => {
                                     error!("Failed to encrypt packet from TUN: {}", err);

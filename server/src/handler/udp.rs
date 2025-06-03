@@ -8,6 +8,7 @@ pub(crate) fn handle(
     socket: Arc<UdpSocket>,
     client_manager: ClientManager,
     tx: tokio::sync::mpsc::Sender<Vec<u8>>,
+    key: String
 ) -> tokio::task::JoinHandle<()> {
     tokio::spawn(async move {
         let mut buf = vec![0u8; 3072];
@@ -22,7 +23,7 @@ pub(crate) fn handle(
                     }
 
                     let raw_packet = &buf[..size];
-                    let packet = match protocol::decrypt(raw_packet) {
+                    let packet = match protocol::decrypt(raw_packet, key.as_bytes()) {
                         Ok(packet) => packet,
                         Err(err) => {
                             error!("Failed to decrypt packet for: {}, {}", addr, err);

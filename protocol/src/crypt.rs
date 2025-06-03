@@ -4,8 +4,6 @@ use aes_gcm::{
     aead::{Aead, AeadCore, KeyInit, OsRng},
 };
 
-pub const TEST_KEY: &[u8] = b"32_byte_secret_key_for_aes256gcm";
-
 /// Data encryption with AES-256-GCM
 pub fn encrypt_aes256gcm(
     key: &[u8],       // 32 bytes (256 bits)
@@ -44,6 +42,8 @@ pub fn decrypt_aes256gcm(
 
 #[test]
 fn crypt_test() -> error::Result<()> {
+    const TEST_KEY: &[u8] = b"32_byte_secret_key_for_aes256gcm";
+    
     assert_eq!(TEST_KEY.len(), 32, "Key must be exactly 32 bytes");
 
     // Данные для шифрования

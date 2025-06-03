@@ -1,14 +1,14 @@
 mod client_manager;
+mod config;
 mod error;
 pub(crate) mod handler;
 mod server;
-mod simple_impl;
 mod tun_device;
 
+use crate::config::ServerConfig;
 use crate::server::Server;
 use clap::Parser;
 use std::net::SocketAddr;
-use log::info;
 //cargo build --release && sudo ./target/release/server
 
 #[tokio::main]
@@ -17,14 +17,15 @@ async fn main() {
         std::env::set_var("RUST_LOG", "info");
     }
     pretty_env_logger::init();
-    
-    let args = Args::parse();
 
-    let server_addr: SocketAddr = format!("0.0.0.0:{}", args.port)
+    // let args = Args::parse();
+    let cfg = ServerConfig::load().expect("Failed to load server config");
+
+    let server_addr: SocketAddr = format!("0.0.0.0:{}", cfg.port)
         .parse()
         .expect("Invalid server port");
-    
-    let server = match Server::new(server_addr).await {
+
+    let server = match Server::new(server_addr, cfg.key).await {
         Ok(s) => s,
         Err(err) => {
             panic!("Failed to start the server: {}", err);

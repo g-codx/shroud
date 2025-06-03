@@ -1,5 +1,5 @@
 use crate::error;
-use log::{error, info};
+use log::{info};
 use std::ops::{Deref, DerefMut};
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::process::Command;
@@ -7,13 +7,12 @@ use tokio_tun::TunBuilder;
 
 pub struct TunDevice(tokio_tun::Tun);
 
+const TUN_NAME: &str = "shroud-tun";
+
 impl TunDevice {
     pub async fn new() -> error::Result<Self> {
-        let tun_name = "tun0";
-
-        // Получаем вектор TUN устройств
         let tun_devices = TunBuilder::new()
-            .name(tun_name)
+            .name(TUN_NAME)
             .address("10.0.0.1".parse().unwrap())
             .netmask("255.255.255.0".parse().unwrap())
             .destination("10.0.0.2".parse().unwrap())
@@ -21,13 +20,10 @@ impl TunDevice {
             .up()
             .build()?;
 
-        // setup_tun_interface().await?;
-
         setup_server_network()
             .await
             .expect("Error setting up server network");
-
-        // Берем первое устройство из вектора
+        
         let tun = tun_devices
             .into_iter()
             .next()
@@ -61,34 +57,11 @@ impl DerefMut for TunDevice {
     }
 }
 
-
-
 async fn setup_server_network() -> Result<(), String> {
-    let interface = get_default_interface().await?;
-    info!("[SERVER] Using default interface: {}", interface);
-
     run_cmd("sysctl -w net.ipv4.ip_forward=1").await?;
     run_cmd("iptables -t nat -A POSTROUTING -s 10.0.0.0/24 -o eth0 -j MASQUERADE").await?;
-    run_cmd("iptables -A FORWARD -i tun0 -o eth0 -j ACCEPT").await?;
+    run_cmd(format!("iptables -A FORWARD -i {} -o eth0 -j ACCEPT", TUN_NAME).as_str()).await?;
     Ok(())
-}
-
-async fn get_default_interface() -> Result<String, String> {
-    let output = Command::new("ip")
-        .arg("route")
-        .arg("list")
-        .output()
-        .await
-        .map_err(|e| format!("Failed to run command: {}", e))?;
-
-    let stdout = String::from_utf8_lossy(&output.stdout);
-    for line in stdout.lines() {
-        if line.starts_with("default via") {
-            return Ok(line.split_whitespace().nth(5).unwrap_or("eth0").to_string());
-        }
-    }
-
-    Err("No default route found".into())
 }
 
 async fn run_cmd(cmd: &str) -> Result<(), String> {
@@ -105,72 +78,6 @@ async fn run_cmd(cmd: &str) -> Result<(), String> {
             cmd,
             status.code()
         ));
-    }
-
-    Ok(())
-}
-
-// Настройка TUN интерфейса в системе
-async fn setup_tun_interface() -> error::Result<()> {
-    // Включаем интерфейс
-    let output = Command::new("ip")
-        .args(["link", "set", "dev", "tun0", "up"])
-        .output()
-        .await?;
-
-    if !output.status.success() {
-        return Err(error::Error::TunConfig(format!(
-            "Не удалось поднять tun0: {:?}",
-            output
-        )));
-    }
-
-    //Назначаем IP адресу
-    let output = Command::new("ip")
-        .args(["addr", "add", "10.8.0.1/24", "dev", "tun0"])
-        .output()
-        .await?;
-
-    if !output.status.success() {
-        return Err(error::Error::TunConfig(format!(
-            "Не удалось назначить IP tun0: {:?}",
-            output
-        )));
-    }
-
-    // Включаем форвардинг пакетов (IPv4)
-    let output = Command::new("sysctl")
-        .args(["-w", "net.ipv4.ip_forward=1"])
-        .output()
-        .await?;
-
-    if !output.status.success() {
-        return Err(error::Error::TunConfig(format!(
-            "Не удалось включить ip_forward: {:?}",
-            output
-        )));
-    }
-
-    // Настройка NAT для выхода в интернет (если нужно)
-    let output = Command::new("iptables")
-        .args([
-            "-t",
-            "nat",
-            "-A",
-            "POSTROUTING",
-            "-s",
-            "10.8.0.0/24",
-            "-j",
-            "MASQUERADE",
-        ])
-        .output()
-        .await?;
-
-    if !output.status.success() {
-        return Err(error::Error::TunConfig(format!(
-            "Не удалось настроить NAT: {:?}",
-            output
-        )));
     }
 
     Ok(())

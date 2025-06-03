@@ -1,13 +1,12 @@
-use crate::crypt::{TEST_KEY, decrypt_aes256gcm, encrypt_aes256gcm};
+use crate::crypt::{decrypt_aes256gcm, encrypt_aes256gcm};
 use crate::packet::Packet;
 
 mod crypt;
 pub mod error;
 mod packet;
 
-pub fn encrypt(data: &[u8]) -> error::Result<Vec<u8>> {
-    //todo remove TEST_KEY
-    let (ciphertext, nonce) = encrypt_aes256gcm(TEST_KEY, data)?;
+pub fn encrypt(data: &[u8], key: &[u8]) -> error::Result<Vec<u8>> {
+    let (ciphertext, nonce) = encrypt_aes256gcm(key, data)?;
     let packet = Packet {
         nonce,
         data: ciphertext,
@@ -15,10 +14,9 @@ pub fn encrypt(data: &[u8]) -> error::Result<Vec<u8>> {
     packet.encode()
 }
 
-pub fn decrypt(data: &[u8]) -> error::Result<Vec<u8>> {
+pub fn decrypt(data: &[u8], key: &[u8]) -> error::Result<Vec<u8>> {
     let packet = Packet::decode(data)?;
-    //todo remove TEST_KEY
-    let decrypted = decrypt_aes256gcm(TEST_KEY, &packet.data, &packet.nonce)?;
+    let decrypted = decrypt_aes256gcm(key, &packet.data, &packet.nonce)?;
     Ok(decrypted)
 }
 
@@ -29,7 +27,7 @@ pub fn decrypt(data: &[u8]) -> error::Result<Vec<u8>> {
 //     p.extend_from_slice(&ciphertext);
 //     Ok(p)
 // }
-// 
+//
 // pub fn decrypt(data: &[u8]) -> error::Result<Vec<u8>> {
 //     let nonce = &data[..12];// [u8; 12]
 //     let ciphertext = &data[12..];
@@ -39,11 +37,12 @@ pub fn decrypt(data: &[u8]) -> error::Result<Vec<u8>> {
 
 #[test]
 fn proto_test() {
+    const TEST_KEY: &[u8] = b"32_byte_secret_key_for_aes256gcm";
     let text = b"hello world";
-    let send_packet = encrypt(text).unwrap();
-    let receive_packet = decrypt(send_packet.as_slice()).unwrap();
+    let send_packet = encrypt(text, TEST_KEY).unwrap();
+    let receive_packet = decrypt(send_packet.as_slice(), TEST_KEY).unwrap();
     assert_eq!(receive_packet, b"hello world");
-    
+
     let result = String::from_utf8(receive_packet).unwrap();
     println!("{:?}", result);
 }

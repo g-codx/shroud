@@ -1,0 +1,2 @@
+key = "32_byte_secret_key_for_aes256gcm"
+port = 44444

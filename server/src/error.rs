@@ -12,6 +12,8 @@ pub enum Error {
     TokioJoin(#[from] tokio::task::JoinError),
     #[error("{0}")]
     TokioTun(#[from] tokio_tun::Error),
+    #[error("{0}")]
+    Config(#[from] toml::de::Error),
 }
 
 pub type Result<T> = std::result::Result<T, Error>;
