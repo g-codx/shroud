@@ -31,7 +31,7 @@ async fn main() -> error::Result<()> {
     let mut tun: AsyncDevice = tun::create_as_async(&config)?;
     println!("TUN интерфейс создан: {}", tun.tun_name()?);
 
-    setup_routing("tun0", server_addr).await?;
+    setup_routing("tun0").await?;
     println!("Route настроен: {}", tun.tun_name()?);
 
     // let route_output = Command::new("ip")
@@ -90,9 +90,7 @@ async fn main() -> error::Result<()> {
                     break;
                 }
                 let packet = protocol::decrypt(&sock_buf[..n])?;
-                println!("Принят пакет от сервера и расшифрован");
                 tun.write_all(&packet).await?;
-                println!("Расшифрованный пакет от сервера отправлен в TUN");
             }
         }
     }
@@ -100,12 +98,55 @@ async fn main() -> error::Result<()> {
     Ok(())
 }
 
-async fn setup_routing(tun_name: &str, server_ip: &str) -> error::Result<()> {
-    //sudo ip route add 10.0.0.0/24 dev tun0
+// pub fn setup_tun_and_routes(server_ip: &str, gateway: &str, interface: &str) {
+//     // 2. Вручную назначаем IP (на случай, если не сработало через tun crate)
+//     Command::new("ip")
+//         .args(["addr", "add", "10.0.0.2/24", "dev", "tun0"])
+//         .status()
+//         .await
+//         .expect("Failed to assign IP to tun0");
+//
+//     // 3. Включаем интерфейс
+//     Command::new("ip")
+//         .args(["link", "set", "tun0", "up"])
+//         .status()
+//         .expect("Failed to bring up tun0");
+//
+//
+//
+//     // 5. Удаляем старый маршрут по умолчанию
+//     Command::new("ip")
+//         .args(["route", "del", "default"])
+//         .status()
+//         .unwrap_or_else(|_| panic!("Failed to remove default route"));
+//
+//     // 6. Устанавливаем новый маршрут через tun0
+//     Command::new("ip")
+//         .args(["route", "add", "default", "via", "10.0.0.1", "dev", "tun0"])
+//         .status()
+//         .expect("Failed to set new default route");
+//
+//     println!("Default route set via tun0");
+// }
+
+async fn setup_routing(tun_name: &str) -> error::Result<()> {
+    // sudo ip route add 10.0.0.0/24 dev tun0
+    // let route_output = Command::new("ip")
+    //     .arg("route")
+    //     .arg("add")
+    //     .arg("10.0.0.0/24")
+    //     .arg("dev")
+    //     .arg("tun0")
+    //     .output()
+    //     .await
+    //     .expect("Failed to execute IP ROUTE command");
+
     let route_output = Command::new("ip")
         .arg("route")
         .arg("add")
-        .arg("10.0.0.0/24")
+        .arg("0.0.0.0/0")
+        .arg("via")
+        .arg("10.0.0.1")
         .arg("dev")
         .arg("tun0")
         .output()
@@ -118,6 +159,23 @@ async fn setup_routing(tun_name: &str, server_ip: &str) -> error::Result<()> {
             String::from_utf8_lossy(&route_output.stderr)
         );
     }
+
+    let gateway = "192.168.0.1";
+    let interface = "enp0s3";
+    let server_ip = "79.133.182.111";
+
+    // 4. Маршрут к серверу
+    let cidr = format!("{}/32", server_ip);
+    Command::new("ip")
+        .args(["route", "add", &cidr, "via", gateway, "dev", interface])
+        .status()
+        .await
+        .expect("Failed to add route to server");
+
+    println!(
+        "Route to server added: {} via {} dev {}",
+        server_ip, gateway, interface
+    );
 
     // // 1. Добавляем маршрут только для трафика к серверу через основной интерфейс
     // Command::new("ip")
