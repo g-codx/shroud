@@ -277,8 +277,10 @@ name = "client"
 version = "0.1.0"
 dependencies = [
  "protocol",
+ "serde",
  "thiserror",
  "tokio",
+ "toml",
  "tun",
 ]
 
@@ -787,7 +789,6 @@ dependencies = [
  "aes-gcm",
  "bincode",
  "serde",
- "serde_derive",
  "thiserror",
 ]
 

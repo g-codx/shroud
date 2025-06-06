@@ -7,5 +7,7 @@ edition = "2024"
 tun = { workspace = true }
 tokio = { workspace = true }
 thiserror = { workspace = true }
+toml = { workspace = true }
+serde = { workspace = true }
 
 protocol = { path = "../protocol" }

@@ -1,26 +1,26 @@
+mod config;
 mod error;
-mod mini_cli;
 
+use crate::config::ClientConfig;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::UdpSocket;
 use tokio::process::Command;
 use tun::{AbstractDevice, AsyncDevice, Configuration};
-
 //cargo build --bin client --release && sudo ./target/release/client
-
 //cargo build --release && sudo ./target/release/client
-pub const TEST_KEY: &[u8] = b"32_byte_secret_key_for_aes256gcm";
+
+const TUN_NAME: &str = "shroud-tun";
+
 #[tokio::main]
 async fn main() -> error::Result<()> {
+    let cfg = ClientConfig::load()?;
     let socket = UdpSocket::bind("0.0.0.0:0").await?;
-    let server_addr = "79.133.182.111:44444";
-    //192.168.0.103:44444
-    //79.133.182.111:44444
+    let server_addr = format!("{}:{}", cfg.server_ip, cfg.server_port);
 
     // Конфигурация TUN интерфейса
     let mut config = Configuration::default();
     config
-        .tun_name("tun0") // имя интерфейса (можно пустое для автогенерации)
+        .tun_name(TUN_NAME) // имя интерфейса (можно пустое для автогенерации)
         .address("10.0.0.2") // IP клиента
         .netmask("255.255.255.0")
         .destination("10.0.0.1")
@@ -31,35 +31,18 @@ async fn main() -> error::Result<()> {
     let mut tun: AsyncDevice = tun::create_as_async(&config)?;
     println!("TUN интерфейс создан: {}", tun.tun_name()?);
 
-    setup_routing("tun0").await?;
+    setup_routing(cfg.server_ip.as_str())
+        .await
+        .expect("Could not setup routing");
     println!("Route настроен: {}", tun.tun_name()?);
 
-    // let route_output = Command::new("ip")
-    //     .arg("route")
-    //     .arg("add")
-    //     .arg("0.0.0.0/0")
-    //     .arg("via")
-    //     .arg("10.8.0.1")
-    //     .arg("dev")
-    //     .arg("tun0")
-    //     .output()
-    //     .await
-    //     .expect("Failed to execute IP ROUTE command");
-    //
-    // if !route_output.status.success() {
-    //     eprintln!(
-    //         "Failed to set route: {}",
-    //         String::from_utf8_lossy(&route_output.stderr)
-    //     );
-    // }
-
-    // Обеспечиваем очистку маршрутов при завершении
-    // let cleanup = cleanup_routing("tun0", server_addr);
-    // tokio::spawn(async move {
-    //     tokio::signal::ctrl_c().await.ok();
-    //     cleanup.await.ok();
-    //     std::process::exit(0);
-    // });
+    //Обеспечиваем очистку маршрутов при завершении
+    let cleanup = cleanup_routing(cfg.server_ip.clone());
+    tokio::spawn(async move {
+        tokio::signal::ctrl_c().await.ok();
+        cleanup.await;
+        std::process::exit(0);
+    });
 
     // Буферы для передачи
     let mut tun_buf = [0u8; 3000];
@@ -76,10 +59,8 @@ async fn main() -> error::Result<()> {
                 }
 
                 let packet = &tun_buf[..n];
-                let packet = protocol::encrypt(packet, TEST_KEY)?;
-                // println!("Принят и зашифрован пакет из TUN");
-                socket.send_to(&packet, server_addr).await?;
-                // println!("Зашифрованный пакет отправлен на сервер");
+                let packet = protocol::encrypt(packet, cfg.key.as_bytes())?;
+                socket.send_to(&packet, server_addr.as_str()).await?;
             }
 
             // Читаем пакет из сокета и пишем в TUN
@@ -89,7 +70,7 @@ async fn main() -> error::Result<()> {
                     println!("Сервер закрыл соединение");
                     break;
                 }
-                let packet = protocol::decrypt(&sock_buf[..n], TEST_KEY)?;
+                let packet = protocol::decrypt(&sock_buf[..n], cfg.key.as_bytes())?;
                 tun.write_all(&packet).await?;
             }
         }
@@ -98,48 +79,26 @@ async fn main() -> error::Result<()> {
     Ok(())
 }
 
-// pub fn setup_tun_and_routes(server_ip: &str, gateway: &str, interface: &str) {
-//     // 2. Вручную назначаем IP (на случай, если не сработало через tun crate)
-//     Command::new("ip")
-//         .args(["addr", "add", "10.0.0.2/24", "dev", "tun0"])
-//         .status()
-//         .await
-//         .expect("Failed to assign IP to tun0");
-//
-//     // 3. Включаем интерфейс
-//     Command::new("ip")
-//         .args(["link", "set", "tun0", "up"])
-//         .status()
-//         .expect("Failed to bring up tun0");
-//
-//
-//
-//     // 5. Удаляем старый маршрут по умолчанию
-//     Command::new("ip")
-//         .args(["route", "del", "default"])
-//         .status()
-//         .unwrap_or_else(|_| panic!("Failed to remove default route"));
-//
-//     // 6. Устанавливаем новый маршрут через tun0
-//     Command::new("ip")
-//         .args(["route", "add", "default", "via", "10.0.0.1", "dev", "tun0"])
-//         .status()
-//         .expect("Failed to set new default route");
-//
-//     println!("Default route set via tun0");
-// }
+async fn cleanup_routing(server_ip: String) {
+    let route_output = Command::new("ip")
+        .arg("route")
+        .arg("del")
+        .arg(server_ip)
+        .output()
+        .await
+        .expect("Failed to execute IP ROUTE command");
 
-async fn setup_routing(tun_name: &str) -> error::Result<()> {
-    // sudo ip route add 10.0.0.0/24 dev tun0
-    // let route_output = Command::new("ip")
-    //     .arg("route")
-    //     .arg("add")
-    //     .arg("10.0.0.0/24")
-    //     .arg("dev")
-    //     .arg("tun0")
-    //     .output()
-    //     .await
-    //     .expect("Failed to execute IP ROUTE command");
+    if !route_output.status.success() {
+        eprintln!(
+            "Failed to set route: {}",
+            String::from_utf8_lossy(&route_output.stderr)
+        );
+    }
+}
+
+async fn setup_routing(server_ip: &str) -> error::Result<()> {
+    let interface = get_default_interface().await;
+    let gateway = get_gateway().await;
 
     let route_output = Command::new("ip")
         .arg("route")
@@ -148,7 +107,7 @@ async fn setup_routing(tun_name: &str) -> error::Result<()> {
         .arg("via")
         .arg("10.0.0.1")
         .arg("dev")
-        .arg("tun0")
+        .arg(TUN_NAME)
         .output()
         .await
         .expect("Failed to execute IP ROUTE command");
@@ -160,14 +119,17 @@ async fn setup_routing(tun_name: &str) -> error::Result<()> {
         );
     }
 
-    let gateway = "192.168.0.1";
-    let interface = "enp0s3";
-    let server_ip = "79.133.182.111";
-
-    // 4. Маршрут к серверу
     let cidr = format!("{}/32", server_ip);
     Command::new("ip")
-        .args(["route", "add", &cidr, "via", gateway, "dev", interface])
+        .args([
+            "route",
+            "add",
+            &cidr,
+            "via",
+            gateway.as_str(),
+            "dev",
+            interface.as_str(),
+        ])
         .status()
         .await
         .expect("Failed to add route to server");
@@ -177,42 +139,41 @@ async fn setup_routing(tun_name: &str) -> error::Result<()> {
         server_ip, gateway, interface
     );
 
-    // // 1. Добавляем маршрут только для трафика к серверу через основной интерфейс
-    // Command::new("ip")
-    //     .args(["route", "add", server_ip, "via", "0.0.0.0", "dev", "eth0"])
-    //     .status()
-    //     .await?;
-    //
-    // // 2. Весь остальной трафик направляем через TUN
-    // Command::new("ip")
-    //     .args(["route", "add", "0.0.0.0/1", "dev", tun_name])
-    //     .status()
-    //     .await?;
-    //
-    // Command::new("ip")
-    //     .args(["route", "add", "128.0.0.0/1", "dev", tun_name])
-    //     .status()
-    //     .await?;
-
     Ok(())
 }
 
-async fn cleanup_routing(tun_name: &str, server_ip: &str) -> error::Result<()> {
-    // Удаляем добавленные маршруты при завершении
-    let _ = Command::new("ip")
-        .args(["route", "del", server_ip])
-        .status()
-        .await?;
+//ip route show default | awk '{print $5}'
+async fn get_default_interface() -> String {
+    let output = Command::new("ip")
+        .args(["route", "show", "default"])
+        .output()
+        .await
+        .expect("Failed to execute 'ip route' command");
 
-    let _ = Command::new("ip")
-        .args(["route", "del", "0.0.0.0/1", "dev", tun_name])
-        .status()
-        .await?;
+    if output.status.success() {
+        let output_str = String::from_utf8_lossy(&output.stdout);
+        let interface = output_str.split_whitespace().nth(4).unwrap_or("unknown");
+        println!("Default interface: {}", interface);
+        interface.to_string()
+    } else {
+        panic!("Error: Could not determine default interface");
+    }
+}
 
-    let _ = Command::new("ip")
-        .args(["route", "del", "128.0.0.0/1", "dev", tun_name])
-        .status()
-        .await?;
+//ip route show default | awk '{print $3}'
+async fn get_gateway() -> String {
+    let output = Command::new("ip")
+        .args(["route", "show", "default"])
+        .output()
+        .await
+        .expect("Failed to execute 'ip route' command");
 
-    Ok(())
+    if output.status.success() {
+        let output_str = String::from_utf8_lossy(&output.stdout);
+        let interface = output_str.split_whitespace().nth(2).unwrap_or("unknown");
+        println!("Gateway: {}", interface);
+        interface.to_string()
+    } else {
+        panic!("Error: Could not determine default interface");
+    }
 }

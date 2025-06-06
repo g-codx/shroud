@@ -1,0 +1,3 @@
+key = "32_byte_secret_key_for_aes256gcm"
+server_ip = "79.133.182.111"
+server_port = 44444
