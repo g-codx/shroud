@@ -3,20 +3,23 @@ use etherparse::{IpNumber, Ipv4HeaderSlice, TcpHeaderSlice, UdpHeaderSlice};
 use socket2::{Domain, Protocol, SockAddr, Socket, Type};
 use std::io;
 use std::net::SocketAddr;
+use std::process::Command;
 use tun::{AbstractDevice, AsyncDevice, Configuration};
 
 pub async fn run_linux(config: super::AppConfig) -> io::Result<()> {
     let mut tun_config = Configuration::default();
     tun_config.tun_name("shroud-tun");
     let tun: AsyncDevice = tun::create_as_async(&tun_config)?;
-    println!("TUN интерфейс создан: {}", tun.tun_name()?);
+    println!("TUN интерфейс создан");
+
+    setup_tun().await;
+    println!("TUN интерфейс сконфигурирован");
 
     let mut buf = [0u8; 65535];
 
     loop {
         let nbytes = tun.recv(&mut buf).await?;
         let packet = &buf[..nbytes];
-        dbg!(packet);
 
         if let Ok(ip_slice) = Ipv4HeaderSlice::from_slice(packet) {
             let dst_ip = ip_slice.destination_addr();
@@ -48,6 +51,35 @@ pub async fn run_linux(config: super::AppConfig) -> io::Result<()> {
             // }
         }
     }
+}
+
+async fn setup_tun() {
+    run_cmd("sudo ip addr add 10.0.0.1/24 dev shroud-tun")
+        .await
+        .unwrap();
+    run_cmd("sudo ip link set shroud-tun up").await.unwrap();
+    run_cmd("sudo ip route add default dev shroud-tun")
+        .await
+        .unwrap();
+}
+
+async fn run_cmd(cmd: &str) -> Result<(), String> {
+    let parts: Vec<&str> = cmd.split_whitespace().collect();
+    let status = tokio::process::Command::new(parts[0])
+        .args(&parts[1..])
+        .status()
+        .await
+        .map_err(|e| format!("Failed to execute {}: {}", cmd, e))?;
+
+    if !status.success() {
+        return Err(format!(
+            "Command `{}` failed with exit code {:?}",
+            cmd,
+            status.code()
+        ));
+    }
+
+    Ok(())
 }
 
 // fn direct_send(packet: &[u8]) -> io::Result<()> {
