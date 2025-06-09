@@ -1,5 +1,5 @@
 [workspace]
-members = ["client", "protocol", "server"]
+members = ["client", "protocol", "server", "xray-router", "xray-cli"]
 
 [workspace.dependencies]
 thiserror = "2.0.12"
