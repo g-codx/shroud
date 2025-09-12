@@ -6,7 +6,7 @@ use std::net::SocketAddr;
 use std::process::Command;
 use tun::{AbstractDevice, AsyncDevice, Configuration};
 
-pub async fn run_linux(config: super::AppConfig) -> io::Result<()> {
+pub async fn run_linux() -> io::Result<()> {
     let mut tun_config = Configuration::default();
     tun_config.tun_name("shroud-tun");
     let tun: AsyncDevice = tun::create_as_async(&tun_config)?;
@@ -15,6 +15,8 @@ pub async fn run_linux(config: super::AppConfig) -> io::Result<()> {
     setup_tun().await;
     println!("TUN интерфейс сконфигурирован");
 
+    //https://www.wireguard.com/netns/#routing-network-namespace-integration
+    
     let mut buf = [0u8; 65535];
 
     loop {

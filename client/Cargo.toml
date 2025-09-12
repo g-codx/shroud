@@ -11,3 +11,4 @@ toml = { workspace = true }
 serde = { workspace = true }
 
 protocol = { path = "../protocol" }
+network = { path = "../network" }
