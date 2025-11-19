@@ -1,9 +1,0 @@
-{
-  "target_domains": [
-    "discord.com",
-    "162.159.128.0",
-    "104.16.128.0"
-  ],
-  "socks5_proxy": "127.0.0.1:1080",
-  "interface_name": "shroud-tun"
-}
