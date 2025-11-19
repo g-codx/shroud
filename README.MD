@@ -1,4 +1,4 @@
-# Primitive VNP server and client
+# Primitive VPN server and client
 
 # Run
 
